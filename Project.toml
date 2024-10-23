@@ -1,0 +1,15 @@
+name = "ContingencyTables"
+uuid = "d8605af1-a39a-40e5-82f3-4793871169cd"
+authors = ["Yanwen Wang <yanwenwang@u.nus.edu>"]
+version = "0.1.0"
+
+[deps]
+CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DataFramesMeta = "1313f7d8-7da2-5740-9ea0-a2ca25f37964"
+
+[compat]
+CategoricalArrays = "0.10.8"
+DataFrames = "1.7.0"
+DataFramesMeta = "0.15.3"
+julia = "1.0"
