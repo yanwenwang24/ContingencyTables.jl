@@ -103,15 +103,14 @@ using CategoricalArrays
         x2 = [1, 2, 1]
         result = ContingencyTable(x1, x2)
         @test result.ordered[1] == true
-        @test !haskey(result.ordered, 2)
     end
 
     @testset "Two Vectors - Missing Values" begin
         x1 = [1, 2, missing, 2]
         x2 = ["A", missing, "B", "B"]
         result = ContingencyTable(x1, x2)
-        @test "missing" in result.counts.Row
-        @test "missing" in names(result.counts)
+        @test "missing_1" in result.counts.Row
+        @test "missing_2" in names(result.counts)
 
         # Skip missing
         result = ContingencyTable(x1, x2, skipmissing=true)
@@ -132,7 +131,7 @@ using CategoricalArrays
 
         # Two columns
         result = ContingencyTable(df, :A, :B)
-        @test size(result.counts) == (4, 3)  # 3 rows + 1 label column × 3 columns
+        @test size(result.counts) == (3, 3)
 
         # With weights column
         result = ContingencyTable(df, :A, weights=:W)

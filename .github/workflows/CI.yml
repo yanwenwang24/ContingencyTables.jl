@@ -21,9 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'    # LTS
-          - '1.9'    # Current stable
-          - '1.10'   # Pre-release
+          - '1.10'
           - 'nightly'
         os:
           - ubuntu-latest
