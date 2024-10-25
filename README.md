@@ -55,11 +55,17 @@ row_prob = ProportionTable(ct, dims=:row)       # P(region|severity)
 col_prob = ProportionTable(ct, dims=:col)       # P(severity|region)
 ```
 
+### Expected Frequencies
+
+Calculate expected frequencies under the assumption of independence:
+
+```julia
+x1 = ["A", "A", "B", "B"]
+x2 = [1, 2, 1, 2]
+ct = ContingencyTable(x1, x2)
+expected = ExpectedFrequency(ct)
+```
+
 ## Contributing
 
-Please feel free to:
-
-- Submit a PR
-- Open an issue
-- Make suggestions
-- Ask questions in the [Julia Discourse](https://discourse.julialang.org/)
+Contributions are welcome! Please feel free to submit a Pull Request.
