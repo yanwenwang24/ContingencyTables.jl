@@ -73,15 +73,13 @@ function ContingencyTable(
     end
     is_ordered = is_cat ? isordered(x) : false
 
-    # Initialize x_valid and weights_valid
-    x_valid = x
-    weights_valid = weights
-
-    # Handle skipmissing
     if skipmissing
         valid_idx = .!ismissing.(x)
-        x_valid = x[valid_idx]
-        weights_valid = isnothing(weights) ? nothing : weights[valid_idx]
+        x_valid = @view x[valid_idx]
+        weights_valid = isnothing(weights) ? nothing : @view weights[valid_idx]
+    else
+        x_valid = x
+        weights_valid = weights
     end
 
     # Determine count type based on weights
@@ -91,6 +89,7 @@ function ContingencyTable(
     if is_cat
         # For categorical data, use the raw values for counting
         freq_dict = Dict{Union{eltype(orig_levels),Missing},count_type}()
+        sizehint!(freq_dict, length(orig_levels) + (!skipmissing && any(ismissing, x) ? 1 : 0))
         # Initialize all levels with zero
         for level in orig_levels
             freq_dict[level] = zero(count_type)
@@ -101,26 +100,33 @@ function ContingencyTable(
 
         # Count using get() to extract raw values from CategoricalValues
         if isnothing(weights_valid)
-            for val in x_valid
+            @inbounds for val in x_valid
                 raw_val = ismissing(val) ? missing : DataAPI.unwrap(val)
                 freq_dict[raw_val] = get(freq_dict, raw_val, zero(count_type)) + one(count_type)
             end
         else
-            for (val, w) in zip(x_valid, weights_valid)
+            @inbounds for (val, w) in zip(x_valid, weights_valid)
                 raw_val = ismissing(val) ? missing : DataAPI.unwrap(val)
                 w_val = ismissing(w) ? zero(count_type) : w
                 freq_dict[raw_val] = get(freq_dict, raw_val, zero(count_type)) + w_val
             end
         end
     else
-        # For non-categorical data, use values directly
+        # For non-categorical data, use Set for unique values
+        unique_set = Set{Union{eltype(x_valid),Missing}}()
+        @inbounds for val in x_valid
+            push!(unique_set, val)
+        end
+
         freq_dict = Dict{Union{eltype(x_valid),Missing},count_type}()
+        sizehint!(freq_dict, length(unique_set))
+
         if isnothing(weights_valid)
-            for val in x_valid
+            @inbounds for val in x_valid
                 freq_dict[val] = get(freq_dict, val, zero(count_type)) + one(count_type)
             end
         else
-            for (val, w) in zip(x_valid, weights_valid)
+            @inbounds for (val, w) in zip(x_valid, weights_valid)
                 w_val = ismissing(w) ? zero(count_type) : w
                 freq_dict[val] = get(freq_dict, val, zero(count_type)) + w_val
             end
@@ -129,29 +135,30 @@ function ContingencyTable(
 
     # Convert to DataFrame
     if is_cat
-        values = Vector{Union{eltype(orig_levels),Missing}}(orig_levels)
+        values = collect(orig_levels)
         if !skipmissing && any(ismissing, x)
             push!(values, missing)
         end
-        counts = [freq_dict[val] for val in values]
     else
-        # For non-categorical data, sort the values
-        values = collect(keys(freq_dict))
-        non_missing_vals = filter(!ismissing, values)
-        sort!(non_missing_vals)
-        values = if any(ismissing, values)
-            # Create a new vector that can handle missing
-            result = Vector{Union{eltype(non_missing_vals),Missing}}(non_missing_vals)
-            push!(result, missing)
-            result
+        # Sort non-missing values for consistent output
+        non_missing_vals = sort!(collect(filter(!ismissing, keys(freq_dict))))
+        values = if any(ismissing, keys(freq_dict))
+            vcat(non_missing_vals, missing)
         else
             non_missing_vals
         end
-        counts = [freq_dict[val] for val in values]
     end
 
-    # Handle missing values in output
-    display_values = [ismissing(v) ? "missing" : v for v in values]
+    # Pre-allocate arrays for DataFrame construction
+    n = length(values)
+    display_values = Vector{Any}(undef, n)
+    counts = Vector{count_type}(undef, n)
+
+    # Fill arrays efficiently
+    @inbounds for (i, val) in enumerate(values)
+        display_values[i] = ismissing(val) ? "missing" : val
+        counts[i] = freq_dict[val]
+    end
 
     df = DataFrame(
         Value=display_values,
@@ -210,51 +217,21 @@ function ContingencyTable(
     is_ordered1 = is_cat1 ? isordered(x1) : false
     is_ordered2 = is_cat2 ? isordered(x2) : false
 
-    # Initialize variables
-    x1_valid = x1
-    x2_valid = x2
-    weights_valid = weights
-
-    # Handle skipmissing
+    # Prepare data
     if skipmissing
         valid_idx = .!ismissing.(x1) .& .!ismissing.(x2)
-        x1_valid = x1[valid_idx]
-        x2_valid = x2[valid_idx]
-        weights_valid = isnothing(weights) ? nothing : weights[valid_idx]
+        x1_valid = @view x1[valid_idx]
+        x2_valid = @view x2[valid_idx]
+        weights_valid = isnothing(weights) ? nothing : @view weights[valid_idx]
+    else
+        x1_valid = x1
+        x2_valid = x2
+        weights_valid = weights
     end
 
     # Get unique values, respecting categorical levels if present
-    unique_x1 = if is_cat1
-        vals = Vector{Union{eltype(orig_levels1),Missing}}(orig_levels1)
-        if !skipmissing && any(ismissing, x1)
-            push!(vals, missing)
-        end
-        vals
-    else
-        # Sort non-categorical unique values, with single missing category
-        non_missing_vals = sort!(unique(filter(!ismissing, x1_valid)))
-        if !skipmissing && any(ismissing, x1_valid)
-            vcat(non_missing_vals, [missing])
-        else
-            non_missing_vals
-        end
-    end
-
-    unique_x2 = if is_cat2
-        vals = Vector{Union{eltype(orig_levels2),Missing}}(orig_levels2)
-        if !skipmissing && any(ismissing, x2)
-            push!(vals, missing)
-        end
-        vals
-    else
-        # Sort non-categorical unique values, with single missing category
-        non_missing_vals = sort!(unique(filter(!ismissing, x2_valid)))
-        if !skipmissing && any(ismissing, x2_valid)
-            vcat(non_missing_vals, [missing])
-        else
-            non_missing_vals
-        end
-    end
+    unique_x1 = _get_unique_values(x1_valid, is_cat1, orig_levels1, skipmissing)
+    unique_x2 = _get_unique_values(x2_valid, is_cat2, orig_levels2, skipmissing)
 
     # Determine count type
     count_type = isnothing(weights) ? Int : Float64
@@ -263,20 +240,27 @@ function ContingencyTable(
     result = zeros(count_type, length(unique_x1), length(unique_x2))
 
     # Create mappings for faster lookup
-    x1_map = Dict(val => i for (i, val) in enumerate(unique_x1))
-    x2_map = Dict(val => j for (j, val) in enumerate(unique_x2))
+    x1_map = _create_value_map(unique_x1)
+    x2_map = _create_value_map(unique_x2)
+
+    # Pre-allocate result matrix
+    count_type = isnothing(weights) ? Int : Float64
+    result = zeros(count_type, length(unique_x1), length(unique_x2))
 
     # Fill the matrix
     if isnothing(weights_valid)
-        for (v1, v2) in zip(x1_valid, x2_valid)
-            # Extract raw values if categorical, handling missing values
+        @inbounds for i in eachindex(x1_valid, x2_valid)
+            v1 = x1_valid[i]
+            v2 = x2_valid[i]
             v1_raw = is_cat1 ? (ismissing(v1) ? missing : DataAPI.unwrap(v1)) : v1
             v2_raw = is_cat2 ? (ismissing(v2) ? missing : DataAPI.unwrap(v2)) : v2
             result[x1_map[v1_raw], x2_map[v2_raw]] += one(count_type)
         end
     else
-        for (v1, v2, w) in zip(x1_valid, x2_valid, weights_valid)
-            # Extract raw values if categorical, handling missing values
+        @inbounds for i in eachindex(x1_valid, x2_valid, weights_valid)
+            v1 = x1_valid[i]
+            v2 = x2_valid[i]
+            w = weights_valid[i]
             v1_raw = is_cat1 ? (ismissing(v1) ? missing : DataAPI.unwrap(v1)) : v1
             v2_raw = is_cat2 ? (ismissing(v2) ? missing : DataAPI.unwrap(v2)) : v2
             w_val = ismissing(w) ? zero(count_type) : w
@@ -285,8 +269,12 @@ function ContingencyTable(
     end
 
     # Convert missing values to "missing" string in row/column names
-    row_names = [ismissing(v) ? "missing" : string(v) for v in unique_x1]
-    col_names = [ismissing(v) ? "missing" : string(v) for v in unique_x2]
+    row_names = map(unique_x1) do v
+        ismissing(v) ? "missing" : string(v)
+    end
+    col_names = map(unique_x2) do v
+        ismissing(v) ? "missing" : string(v)
+    end
 
     # Create DataFrame
     df = DataFrame(result, Symbol.(col_names))

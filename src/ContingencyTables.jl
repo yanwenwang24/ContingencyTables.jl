@@ -3,10 +3,13 @@ module ContingencyTables
 using CategoricalArrays
 using DataAPI
 using DataFrames
+using SparseArrays
 
-export ContingencyTable, ContingencyResults
+export ContingencyTable, ProportionTable
+export ContingencyResults, ProportionResults
 
 include("types.jl")
+include("utils.jl")
 include("ContingencyTable.jl")
 include("ProportionTable.jl")
 
