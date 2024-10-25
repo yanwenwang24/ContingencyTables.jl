@@ -102,12 +102,12 @@ function ContingencyTable(
         # Count using get() to extract raw values from CategoricalValues
         if isnothing(weights_valid)
             for val in x_valid
-                raw_val = ismissing(val) ? missing : get(val)  # Extract raw value from CategoricalValue
+                raw_val = ismissing(val) ? missing : DataAPI.unwrap(val)
                 freq_dict[raw_val] = get(freq_dict, raw_val, zero(count_type)) + one(count_type)
             end
         else
             for (val, w) in zip(x_valid, weights_valid)
-                raw_val = ismissing(val) ? missing : get(val)  # Extract raw value from CategoricalValue
+                raw_val = ismissing(val) ? missing : DataAPI.unwrap(val)
                 w_val = ismissing(w) ? zero(count_type) : w
                 freq_dict[raw_val] = get(freq_dict, raw_val, zero(count_type)) + w_val
             end
@@ -225,56 +225,34 @@ function ContingencyTable(
 
     # Get unique values, respecting categorical levels if present
     unique_x1 = if is_cat1
-        # Start with categorical levels
         vals = Vector{Union{eltype(orig_levels1),Missing}}(orig_levels1)
-        # Add missing if needed
         if !skipmissing && any(ismissing, x1)
             push!(vals, missing)
         end
         vals
     else
-        # Sort non-categorical unique values
-        vals = unique(x1_valid)
-        non_missing_vals = filter(!ismissing, vals)
-        sort!(non_missing_vals)
+        # Sort non-categorical unique values, with single missing category
+        non_missing_vals = sort!(unique(filter(!ismissing, x1_valid)))
         if !skipmissing && any(ismissing, x1_valid)
-            result = Vector{Union{eltype(non_missing_vals),Missing}}(non_missing_vals)
-            push!(result, missing)
-            result
+            vcat(non_missing_vals, [missing])
         else
             non_missing_vals
         end
     end
 
     unique_x2 = if is_cat2
-        # Start with categorical levels
-        vals = Vector{Union{eltype(orig_levels2), Missing}}(orig_levels2)
-        # Add missing if needed
+        vals = Vector{Union{eltype(orig_levels2),Missing}}(orig_levels2)
         if !skipmissing && any(ismissing, x2)
             push!(vals, missing)
         end
         vals
     else
-        # Sort non-categorical unique values
-        vals = unique(x2_valid)
-        non_missing_vals = filter(!ismissing, vals)
-        sort!(non_missing_vals)
+        # Sort non-categorical unique values, with single missing category
+        non_missing_vals = sort!(unique(filter(!ismissing, x2_valid)))
         if !skipmissing && any(ismissing, x2_valid)
-            result = Vector{Union{eltype(non_missing_vals), Missing}}(non_missing_vals)
-            push!(result, missing)
-            result
+            vcat(non_missing_vals, [missing])
         else
             non_missing_vals
-        end
-    end
-
-    # Add missing to categories if needed
-    if !skipmissing
-        if any(ismissing, x1_valid) && !is_cat1
-            push!(unique_x1, missing)
-        end
-        if any(ismissing, x2_valid) && !is_cat2
-            push!(unique_x2, missing)
         end
     end
 
@@ -285,52 +263,30 @@ function ContingencyTable(
     result = zeros(count_type, length(unique_x1), length(unique_x2))
 
     # Create mappings for faster lookup
-    x1_map = Dict{Union{eltype(unique_x1), Missing}, Int}(
-        val => i for (i, val) in enumerate(unique_x1)
-    )
-    
-    x2_map = Dict{Union{eltype(unique_x2), Missing}, Int}(
-        val => j for (j, val) in enumerate(unique_x2)
-    )
+    x1_map = Dict(val => i for (i, val) in enumerate(unique_x1))
+    x2_map = Dict(val => j for (j, val) in enumerate(unique_x2))
 
     # Fill the matrix
     if isnothing(weights_valid)
         for (v1, v2) in zip(x1_valid, x2_valid)
             # Extract raw values if categorical, handling missing values
-            v1_raw = is_cat1 ? (ismissing(v1) ? missing : get(v1)) : v1
-            v2_raw = is_cat2 ? (ismissing(v2) ? missing : get(v2)) : v2
+            v1_raw = is_cat1 ? (ismissing(v1) ? missing : DataAPI.unwrap(v1)) : v1
+            v2_raw = is_cat2 ? (ismissing(v2) ? missing : DataAPI.unwrap(v2)) : v2
             result[x1_map[v1_raw], x2_map[v2_raw]] += one(count_type)
         end
     else
         for (v1, v2, w) in zip(x1_valid, x2_valid, weights_valid)
             # Extract raw values if categorical, handling missing values
-            v1_raw = is_cat1 ? (ismissing(v1) ? missing : get(v1)) : v1
-            v2_raw = is_cat2 ? (ismissing(v2) ? missing : get(v2)) : v2
+            v1_raw = is_cat1 ? (ismissing(v1) ? missing : DataAPI.unwrap(v1)) : v1
+            v2_raw = is_cat2 ? (ismissing(v2) ? missing : DataAPI.unwrap(v2)) : v2
             w_val = ismissing(w) ? zero(count_type) : w
             result[x1_map[v1_raw], x2_map[v2_raw]] += w_val
         end
     end
 
     # Convert missing values to "missing" string in row/column names
-    row_missing_count = 0
-    row_names = map(unique_x1) do v
-        if ismissing(v)
-            row_missing_count += 1
-            "missing_$row_missing_count"
-        else
-            v
-        end
-    end
-    
-    col_missing_count = 0
-    col_names = map(unique_x2) do v
-        if ismissing(v)
-            col_missing_count += 1
-            "missing_$col_missing_count"
-        else
-            v
-        end
-    end
+    row_names = [ismissing(v) ? "missing" : string(v) for v in unique_x1]
+    col_names = [ismissing(v) ? "missing" : string(v) for v in unique_x2]
 
     # Create DataFrame
     df = DataFrame(result, Symbol.(col_names))
