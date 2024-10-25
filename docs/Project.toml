@@ -1,0 +1,6 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+ContingencyTables = "d8605af1-a39a-40e5-82f3-4793871169cd"  # Replace with your package's UUID
+
+[compat]
+Documenter = "1"
