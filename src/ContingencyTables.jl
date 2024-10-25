@@ -12,6 +12,7 @@ include("types.jl")
 include("utils.jl")
 include("ContingencyTable.jl")
 include("ProportionTable.jl")
+include("ExpectedFrequency.jl")
 
 export ContingencyTable, ContingencyResults, ProportionTable, ProportionResults
 
