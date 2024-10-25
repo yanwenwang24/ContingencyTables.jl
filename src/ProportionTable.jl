@@ -40,7 +40,7 @@ or conditional probabilities.
     - Can calculate conditional probabilities (dims=:row or :col)
     - Maintains original categorical levels and ordering if present
 
-# Examples
+# [Examples](@id examples)
 ```julia
 # Simple proportions for a single vector
 x = [1, 2, 2, 3, 3, 3]

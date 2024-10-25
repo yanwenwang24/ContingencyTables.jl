@@ -96,7 +96,7 @@ println(ct.counts)
 
 ## Usage Examples
 
-Check out the [Examples](@ref) section for detailed usage examples and the [API Reference](@ref) for complete function documentation.
+Check out the [Examples](@ref examples) section for detailed usage examples and the [API Reference](@ref) for complete function documentation.
 
 ## Contributing
 

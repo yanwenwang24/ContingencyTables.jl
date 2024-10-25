@@ -1,5 +1,9 @@
 using ContingencyTables
 using Documenter
+using CategoricalArrays
+using DataFrames
+using DataAPI
+
 
 DocMeta.setdocmeta!(ContingencyTables, :DocTestSetup, :(using ContingencyTables); recursive=true)
 

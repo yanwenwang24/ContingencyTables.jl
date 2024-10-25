@@ -33,7 +33,7 @@ Create a contingency table from input data, supporting both single and two-dimen
 - For categorical data, maintains the original level ordering
 - For non-categorical data, sorts non-missing values for consistent output
 
-# Examples
+# [Examples](@id examples)
 ```julia
 # Basic usage with a single vector
 x = [1, 2, 2, 3, missing]
