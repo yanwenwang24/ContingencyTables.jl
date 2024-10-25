@@ -7,6 +7,7 @@ using SparseArrays
 
 export ContingencyTable, ProportionTable
 export ContingencyResults, ProportionResults
+export ExpectedFrequency
 
 include("types.jl")
 include("utils.jl")
