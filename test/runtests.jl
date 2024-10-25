@@ -2,6 +2,7 @@ using ContingencyTables
 using Test
 using DataFrames
 using CategoricalArrays
+
 @testset "ContingencyTables.jl" begin
     @testset "ContingencyTable - Single Vector" begin
         # Basic functionality
