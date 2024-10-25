@@ -63,7 +63,3 @@ Please feel free to:
 - Open an issue
 - Make suggestions
 - Ask questions in the [Julia Discourse](https://discourse.julialang.org/)
-
-## License
-
-This package is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
