@@ -1,6 +1,22 @@
 
 """
-Helper function for creating ContingencyResults
+    create_contingency_results(counts, weights_used, value_type, count_type, levels, ordered)
+
+Create a ContingencyResults object that stores the results of contingency table analysis.
+
+# Arguments
+- `counts::DataFrame`: DataFrame containing the contingency counts
+- `weights_used::Bool`: Indicates if weights were used in the calculation
+- `value_type::Type{T}`: Type of the values in the contingency table
+- `count_type::Type{S}`: Type used for counting (must be a subtype of Real)
+- `levels::Dict{Int, Union{Nothing, Vector{L}}}`: Dictionary mapping dimensions to their levels
+- `ordered::Dict{Int, Bool}`: Dictionary indicating if dimensions are ordered
+
+# Returns
+- `ContingencyResults{T, S, L}`: A new ContingencyResults object
+
+# Note
+This is a helper function primarily used internally for constructing ContingencyResults objects.
 """
 
 function create_contingency_results(
@@ -15,7 +31,23 @@ function create_contingency_results(
 end
 
 """
-Helper function for creating ProportionResults
+    create_proportion_results(proportions, dimension, value_type, count_type, levels, ordered)
+
+Create a ProportionResults object that stores the results of proportion calculations.
+
+# Arguments
+- `proportions::DataFrame`: DataFrame containing the calculated proportions
+- `dimension::Union{Nothing,Symbol}`: Dimension along which proportions were calculated
+- `value_type::Type{T}`: Type of the values in the proportion table
+- `count_type::Type{S}`: Type used for counting (must be a subtype of Real)
+- `levels::Dict{Int, Union{Nothing, Vector{L}}}`: Dictionary mapping dimensions to their levels
+- `ordered::Dict{Int, Bool}`: Dictionary indicating if dimensions are ordered
+
+# Returns
+- `ProportionResults{T, S, L}`: A new ProportionResults object
+
+# Note
+This is a helper function primarily used internally for constructing ProportionResults objects.
 """
 
 function create_proportion_results(
@@ -30,18 +62,34 @@ function create_proportion_results(
 end
 
 """
-Helper function to efficiently get unique values with missing handling
+    _get_unique_values(x, is_cat, orig_levels, skipmissing)
+
+Efficiently compute unique values from an array, handling categorical and missing values.
+
+# Arguments
+- `x`: Input array to extract unique values from
+- `is_cat::Bool`: Whether the input is categorical
+- `orig_levels`: Original levels for categorical data
+- `skipmissing::Bool`: Whether to exclude missing values
+
+# Returns
+- Vector of unique values, sorted if non-categorical
+
+# Note
+Uses Set for efficient unique value computation for non-categorical data.
+Handles missing values based on the skipmissing parameter.
 """
 
 function _get_unique_values(x, is_cat, orig_levels, skipmissing)
     if is_cat
+        # For categorical data, use original levels
         vals = Vector{Union{eltype(orig_levels), Missing}}(orig_levels)
         if !skipmissing && any(ismissing, x)
             push!(vals, missing)
         end
         return vals
     else
-        # Use Set for faster unique operation
+        # For non-categorical data, use Set for efficiency
         non_missing_vals = sort!(collect(Set(filter(!ismissing, x))))
         if !skipmissing && any(ismissing, x)
             push!(non_missing_vals, missing)
@@ -51,7 +99,19 @@ function _get_unique_values(x, is_cat, orig_levels, skipmissing)
 end
 
 """
-Helper function to create value mapping dictionary
+    _create_value_map(unique_vals)
+
+Create a dictionary mapping unique values to their integer indices.
+
+# Arguments
+- `unique_vals`: Vector of unique values to be mapped
+
+# Returns
+- Dictionary mapping each value to its index position
+
+# Note
+Pre-allocates dictionary size for better performance.
+Handles missing values appropriately.
 """
 
 function _create_value_map(unique_vals)
@@ -65,7 +125,15 @@ function _create_value_map(unique_vals)
 end
 
 """
-Helper function to print ContingencyResults
+    Base.show(io::IO, ct::ContingencyResults)
+
+Custom display method for ContingencyResults objects.
+
+Prints a formatted summary of the contingency table results, including:
+- Value and count types
+- Whether weights were used
+- Dimension information (categorical/ordered status and levels)
+- The actual counts in table format
 """
 
 function Base.show(io::IO, ct::ContingencyResults)
@@ -84,7 +152,15 @@ function Base.show(io::IO, ct::ContingencyResults)
 end
 
 """
-Helper function to print ProportionResults
+    Base.show(io::IO, pr::ProportionResults)
+
+Custom display method for ProportionResults objects.
+
+Prints a formatted summary of the proportion results, including:
+- Value and count types
+- Dimension used for proportion calculation
+- Dimension information (categorical/ordered status and levels)
+- The actual proportions in table format
 """
 
 function Base.show(io::IO, pr::ProportionResults)

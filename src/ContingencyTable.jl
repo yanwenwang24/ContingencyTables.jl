@@ -1,51 +1,72 @@
-
 """
     ContingencyTable(x; skipmissing=false, weights=nothing)
     ContingencyTable(df::DataFrame, col::Symbol; skipmissing=false, weights=nothing)
     ContingencyTable(x1, x2; skipmissing=false, weights=nothing)
     ContingencyTable(df::DataFrame, col1::Symbol, col2::Symbol; skipmissing=false, weights=nothing)
 
- Create a contingency table from input data.
+Create a contingency table from input data, supporting both single and two-dimensional analyses.
 
 # Arguments
-- `x`, `x1`, `x2`: Vectors of observations
+- `x`, `x1`, `x2`: Vectors of observations (can be regular arrays or CategoricalArrays)
 - `df`: DataFrame containing the columns to analyze
 - `col`, `col1`, `col2`: Column symbols from the DataFrame
 - `skipmissing=false`: Whether to exclude missing values from the count
-- `weights=nothing`: Optional weights for observations
+- `weights=nothing`: Optional weights for observations. Can be:
+    - A vector of numerical weights
+    - A Symbol referring to a weights column in the DataFrame
+    - Nothing for unweighted counts
 
 # Returns
 - ContingencyResults object containing:
-  - counts::DataFrame with frequency counts
-  - weights_used::Bool indicating if weights were applied
-  - value_type::Type of the input values
-  - count_type::Type of the count values
-  - levels::Dict storing categorical levels
-  - ordered::Dict storing categorical ordering information
+  - counts::DataFrame: Frequency counts in table format
+  - weights_used::Bool: Indicates if weights were applied
+  - value_type::Type: Type of the input values
+  - count_type::Type: Type used for counting (Int for unweighted, Float64 for weighted)
+  - levels::Dict: Maps dimensions to their categorical levels (if any)
+  - ordered::Dict: Maps dimensions to their ordering status
+
+# Details
+- Handles both regular and categorical arrays
+- Preserves categorical array ordering and levels
+- Supports weighted and unweighted counts
+- Handles missing values according to skipmissing parameter
+- For categorical data, maintains the original level ordering
+- For non-categorical data, sorts non-missing values for consistent output
 
 # Examples
 ```julia
-# Single vector
-result = ContingencyTable([1, 2, 2, 3, missing])
-result.counts  # Access the counts DataFrame
+# Basic usage with a single vector
+x = [1, 2, 2, 3, missing]
+result = ContingencyTable(x)
+result.counts  # Shows frequency of each value
 
-# From DataFrame column
+# Using DataFrame column
 df = DataFrame(A = [1, 2, 2, 3, missing])
 result = ContingencyTable(df, :A)
 
-# Two vectors with weights
+# Two-dimensional table with weights
 x1 = [1, 2, 2, 3]
 x2 = ["a", "b", "b", "a"]
 weights = [1.0, 2.0, 1.0, 1.0]
 result = ContingencyTable(x1, x2, weights=weights)
 
-# With categorical data
+# Using categorical data with ordering
+using CategoricalArrays
 x = categorical(["A", "B", "A", "C", "B"], ordered=true)
 df = DataFrame(cat=x, val=[1,2,1,3,2])
-ct1 = ContingencyTable(x)
-ct2 = ContingencyTable(df, :cat)
-ct3 = ContingencyTable(df, :cat, :val)
+ct1 = ContingencyTable(x)                  # One-dimensional
+ct2 = ContingencyTable(df, :cat)          # From DataFrame
+ct3 = ContingencyTable(df, :cat, :val)    # Two-dimensional
+
+# With missing value handling
+result = ContingencyTable([1, 2, missing, 2], skipmissing=true)
 ```
+
+# Notes
+- Empty input vectors will raise an ArgumentError
+- Negative weights will raise an ArgumentError
+- Weight vector length must match input vector length
+- Missing values in weights are treated as zero
 """
 
 # Method for single vector input
@@ -73,6 +94,7 @@ function ContingencyTable(
     end
     is_ordered = is_cat ? isordered(x) : false
 
+    # Filter missing values if requested
     if skipmissing
         valid_idx = .!ismissing.(x)
         x_valid = @view x[valid_idx]
@@ -85,9 +107,9 @@ function ContingencyTable(
     # Determine count type based on weights
     count_type = isnothing(weights) ? Int : Float64
 
-    # Count frequencies
+    # Count frequencies using appropriate method based on data type
     if is_cat
-        # For categorical data, use the raw values for counting
+        # Handle categorical data with preserved levels
         freq_dict = Dict{Union{eltype(orig_levels),Missing},count_type}()
         sizehint!(freq_dict, length(orig_levels) + (!skipmissing && any(ismissing, x) ? 1 : 0))
         # Initialize all levels with zero
@@ -160,6 +182,7 @@ function ContingencyTable(
         counts[i] = freq_dict[val]
     end
 
+    # Create DataFrame
     df = DataFrame(
         Value=display_values,
         Count=counts
