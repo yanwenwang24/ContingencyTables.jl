@@ -2,6 +2,7 @@
 
 [![Build Status](https://github.com/yanwenwang24/ContingencyTables.jl/workflows/CI/badge.svg)](https://github.com/yanwenwang24/ContingencyTables.jl/actions)
 [![Coverage](https://codecov.io/gh/yanwenwang24/ContingencyTables.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/yanwenwang24/ContingencyTables.jl)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 📊 A Julia package for creating contingency/proportion tables.
 
